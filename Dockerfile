@@ -25,7 +25,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates git tini unzip && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
-    curl -fsSL https://composio.dev/install | bash && \
+    npm install -g @composio/cli && \
     rm -rf /var/lib/apt/lists/*
 
 # Install hermes-agent (provides the `hermes` CLI) and pre-build its React
