@@ -25,6 +25,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates git tini && \
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
+    curl -fsSL https://composio.dev/install | bash && \
     rm -rf /var/lib/apt/lists/*
 
 # Install hermes-agent (provides the `hermes` CLI) and pre-build its React
@@ -61,6 +62,9 @@ RUN uv pip install --system --no-cache -r /app/requirements.txt
 
 RUN mkdir -p /data/.hermes
 
+# Verify composio installlation
+RUN composio --version
+
 COPY server.py /app/server.py
 COPY templates/ /app/templates/
 COPY start.sh /app/start.sh
@@ -73,6 +77,9 @@ ENV HERMES_HOME=/data/.hermes
 # always returns True, triggering a full `npm run build` inside every /chat WebSocket request. Setting HERMES_TUI_DIR routes through the
 # early-return path in _make_tui_argv that skips staleness detection entirely. Upstream bug; remove this when v2026.5.x ships the fix.
 ENV HERMES_TUI_DIR=/opt/hermes-agent/ui-tui
+
+## Expose composio
+ENV PATH="/root/.local/bin:${PATH}"
 
 # tini wraps start.sh so it runs as PID 1's child instead of as PID 1 itself.
 # `-g` propagates signals to the whole process group so `docker stop` /
