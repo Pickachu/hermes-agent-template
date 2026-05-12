@@ -32,15 +32,16 @@ RUN apt-get update && \
 # Deleting web/ afterwards makes hermes's internal _build_web_ui skip the
 # rebuild step (it early-returns when package.json is absent), so container
 # startup is fast and no runtime npm dependency is needed.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl ca-certificates it tini unzip && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y --no-install-recommends nodejs && \
-    curl -L https://github.com/ComposioHQ/composio/releases/download/@composio/cli@0.2.29/composio-linux-x64.zip -o /tmp/composio.zip && \
-    unzip /tmp/composio.zip -d /usr/local/bin && \
-    chmod +x /usr/local/bin/composio && \
-    rm -f /tmp/composio.zip && \
-    rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch ${HERMES_REF} https://github.com/NousResearch/hermes-agent.git /opt/hermes-agent && \
+    cd /opt/hermes-agent && \
+    uv pip install --system --no-cache -e ".[all]" && \
+    cd /opt/hermes-agent/web && \
+    npm install --silent && \
+    npm run build && \
+    cd /opt/hermes-agent/ui-tui && \
+    npm install --silent --no-fund --no-audit --progress=false && \
+    npm run build && \
+    rm -rf /opt/hermes-agent/web /opt/hermes-agent/.git /root/.npm
 
 # Why pre-build ui-tui (and why we don't delete it after):
 # - The dashboard's embedded Chat tab spawns `node ui-tui/dist/entry.js`
@@ -60,9 +61,6 @@ RUN uv pip install --system --no-cache -r /app/requirements.txt
 
 RUN mkdir -p /data/.hermes
 
-# Verify composio installlation
-RUN composio --version
-
 COPY server.py /app/server.py
 COPY templates/ /app/templates/
 COPY start.sh /app/start.sh
@@ -75,9 +73,6 @@ ENV HERMES_HOME=/data/.hermes
 # always returns True, triggering a full `npm run build` inside every /chat WebSocket request. Setting HERMES_TUI_DIR routes through the
 # early-return path in _make_tui_argv that skips staleness detection entirely. Upstream bug; remove this when v2026.5.x ships the fix.
 ENV HERMES_TUI_DIR=/opt/hermes-agent/ui-tui
-
-## Expose composio
-ENV PATH="/root/.local/bin:${PATH}"
 
 # tini wraps start.sh so it runs as PID 1's child instead of as PID 1 itself.
 # `-g` propagates signals to the whole process group so `docker stop` /
